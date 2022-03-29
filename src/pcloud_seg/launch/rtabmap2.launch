@@ -1,0 +1,44 @@
+<launch>
+
+    <!-- Example to run rgbd datasets:
+   $ wget http://vision.in.tum.de/rgbd/dataset/freiburg3/rgbd_dataset_freiburg3_long_office_household.bag
+   $ rosbag decompress rgbd_dataset_freiburg3_long_office_household.bag
+   $ wget https://gist.githubusercontent.com/matlabbe/897b775c38836ed8069a1397485ab024/raw/6287ce3def8231945326efead0c8a7730bf6a3d5/tum_rename_world_kinect_frame.py
+   $ python tum_rename_world_kinect_frame.py rgbd_dataset_freiburg3_long_office_household.bag
+   $ roslaunch rtabmap_ros rgbdslam_datasets.launch
+   $ rosbag play -.-clock rgbd_dataset_freiburg3_long_office_household.bag
+   -->
+
+    <param name="use_sim_time" type="bool" value="True"/>
+
+
+    <!-- TF FRAMES -->
+    <node pkg="tf" type="static_transform_publisher" name="world_to_map" args="0.0 0.0 0.0 0.0 0.0 0.0 /world /map 100" />
+
+
+    <group ns="rtabmap">
+
+      
+
+        <!-- Visual SLAM -->
+        <!-- args: "delete_db_on_start" and "udebug" -->
+        <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
+            <param name="subscribe_depth" type="bool" value="true"/>
+
+            <param name="Rtabmap/StartNewMapOnLoopClosure" type="string" value="true"/>
+            <param name="RGBD/CreateOccupancyGrid" type="string" value="false"/>
+            <param name="Grid/VoxelSize" type="string" value="0.01"/>
+            <param name="Grid/RayTracing" type="bool" value="true"/>
+            <param name="Grid/CellSize" type="string" value="0.01"/>
+            <param name="Rtabmap/CreateIntermediateNodes" type="string" value="true"/>
+
+            <param name="frame_id" type="string" value="kinect"/>
+            <remap from="depth/image" to="/rtabmap/depth_registered/image"/>
+            <param name="queue_size" type="int" value="10"/>
+        </node>
+
+      
+    </group>
+
+
+</launch>

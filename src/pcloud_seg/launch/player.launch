@@ -1,0 +1,35 @@
+<launch>
+
+    <!-- Example to run rgbd datasets:
+   $ wget http://vision.in.tum.de/rgbd/dataset/freiburg3/rgbd_dataset_freiburg3_long_office_household.bag
+   $ rosbag decompress rgbd_dataset_freiburg3_long_office_household.bag
+   $ wget https://gist.githubusercontent.com/matlabbe/897b775c38836ed8069a1397485ab024/raw/6287ce3def8231945326efead0c8a7730bf6a3d5/tum_rename_world_kinect_frame.py
+   $ python tum_rename_world_kinect_frame.py rgbd_dataset_freiburg3_long_office_household.bag
+   $ roslaunch rtabmap_ros rgbdslam_datasets.launch
+   $ rosbag play -.-clock rgbd_dataset_freiburg3_long_office_household.bag
+   -->
+
+    <param name="use_sim_time" type="bool" value="False"/>
+    <!-- TF FRAMES -->
+
+
+    <group ns="rtabmap">
+
+        <!-- Visual SLAM -->
+        <!-- args: "delete_db_on_start" and "udebug" -->
+        <node name="rtabmap_player" pkg="rtabmap_ros" type="data_player" output="screen">
+            <param name="database" type="string" value="~/.ros/map.db"/>
+            <param name="frame_id" type="string" value="kinect"/>
+            <param name="odom" type="string" value="/rtabmap/odom"/>
+            <param name="rgb/image" type="string" value="/camera/rgb/image_color"/>
+            <param name="depth_registered/image" type="string" value="/camera/depth/image"/>
+            <param name="/rgb/camera_info" type="string" value="/camera/rgb/camera_info"/>
+           
+            <param name="queue_size" type="int" value="10"/>
+        </node>
+
+
+    </group>
+
+
+</launch>

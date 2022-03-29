@@ -1,0 +1,7 @@
+bags/rgbd*
+bags/test.bag
+bags/*.bag
+devel
+build
+logs
+.catkin_tools

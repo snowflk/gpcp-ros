@@ -1,0 +1,8 @@
+version: '3'
+services:
+  ros:
+    build: .
+    ports:
+      - 9090:9090
+    volumes:
+      - ./workspace:/home/ros/ros_ws
