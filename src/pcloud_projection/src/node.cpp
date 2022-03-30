@@ -63,8 +63,8 @@ void processAndPublish()
     fc.setCameraPose(camera_pose);
     fc.setHorizontalFOV(80);
     fc.setVerticalFOV(60);
-    fc.setNearPlaneDistance(0);
-    fc.setFarPlaneDistance(15);
+    fc.setNearPlaneDistance(-10);
+    fc.setFarPlaneDistance(50);
 
     pcl::PointCloud<pcl::PointXYZRGB> target;
     fc.filter(target);
@@ -84,13 +84,20 @@ void processAndPublish()
     pcl::PointCloud<pcl::PointXYZRGB> transformed_target;
     pcloud_projection::FilteredPointCloud out_msg;
 
-    auto transform = tf_buffer.lookupTransform("openni_rgb_optical_frame", "map", ros::Time(0));
-    pcl_ros::transformPointCloud(target, transformed_target, transform.transform);
-    out_msg.indices = indicesArray;
-    pcl::toROSMsg(transformed_target, out_msg.pc);
-    out_msg.pc.header.frame_id = "openni_rgb_optical_frame";
-    publisher.publish(out_msg);
-    pc_publisher.publish(out_msg.pc);
+    try {
+        auto transform = tf_buffer.lookupTransform("openni_rgb_optical_frame", "map", ros::Time(0));
+        pcl_ros::transformPointCloud(target, transformed_target, transform.transform);
+        out_msg.indices = indicesArray;
+        pcl::toROSMsg(transformed_target, out_msg.pc);
+        out_msg.pc.header.frame_id = "openni_rgb_optical_frame";
+        publisher.publish(out_msg);
+        pc_publisher.publish(out_msg.pc);
+    } catch (tf2::ConnectivityException& e){
+        std::cout << "No TF can be found: " << e.what() << std::endl; 
+    } catch (std::exception& e){
+        std::cout << "An unexpected error occured: " << e.what() << std::endl;
+    }
+
 }
 
 void onOdomReceived(const nav_msgs::Odometry &odom_ptr)

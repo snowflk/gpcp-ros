@@ -37,11 +37,14 @@ RUN sudo chmod +x /sbin/update_bashrc ; sudo chown ros /sbin/update_bashrc ; syn
 COPY docker/entrypoint.sh /ros_entrypoint.sh
 RUN sudo chmod +x /ros_entrypoint.sh ; sudo chown ros /ros_entrypoint.sh ;
 
-RUN sh \
+RUN sudo sh \
     -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" \
         > /etc/apt/sources.list.d/ros-latest.list' && \
         wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
-RUN apt-get update && apt-get install -y python3-catkin-tools ros-noetic-tf2-sensor-msgs
+RUN sudo apt-get update && sudo apt-get install -y python3-catkin-tools ros-noetic-tf2-sensor-msgs python3-pip ros-noetic-ros-numpy
+RUN pip3 install pcl
+RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+
 # Clean image
 RUN sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* 
 WORKDIR ${HOME}/ros_ws/
