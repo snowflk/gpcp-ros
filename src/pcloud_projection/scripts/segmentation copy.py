@@ -324,8 +324,9 @@ def process():
         X_dsquared = np.square(X).sum(axis=1)
         bg_color = (120, 120, 120)
         
-        result_class = np.zeros(current_pc_array.shape[0], dtype=[('class', 'i1')]) 
-        res_pc_array = rfn.merge_arrays((current_pc_array, result_class), flatten=True)
+        result_class = np.zeros(current_full_pc.shape[0], dtype=[('class', 'i1')]) 
+        if "class" not in current_full_pc.dtype.names:
+            current_full_pc = rfn.merge_arrays((current_full_pc, result_class), flatten=True)
         
         px_candidates = np.ones(result.shape + (2,), dtype=np.float) * (-1) # last dim: [point_idx, distance to camera]
         px_candidates[:, :, -1] = sys.float_info.max
@@ -348,23 +349,28 @@ def process():
             xi, yi = Xp[i]
             if (xi >= IMG_W or xi < 0) or (yi >= IMG_H or yi < 0):
                 ci = -1
-                rgbi = bg_color
             elif result[yi, xi] == 0:
                 ci = -1
-                rgbi = bg_color
             elif px_candidates[yi, xi][0] != i:
                 rgbi = bg_color
                 ci = -1
             else:
                 rgbi = result_rgb[int(yi), int(xi)]
                 ci = result[yi, xi]
-            res_pc_array['r'][i] = rgbi[0]
-            res_pc_array['g'][i] = rgbi[1]
-            res_pc_array['b'][i] = rgbi[2]
-            res_pc_array['class'][i] = ci
-
+            point_idx = current_pc_indices[i]
+            class_manager.add(point_idx, ci)
+            #res_pc_array['r'][i] = rgbi[0]
+            #res_pc_array['g'][i] = rgbi[1]
+            #res_pc_array['b'][i] = rgbi[2]
+            #res_pc_array['class'][i] = ci
+            final_ci = class_manager.get_class_id(point_idx)
+            rgbi = p_colors[final_ci] if final_ci >= 0 else bg_color
+            current_full_pc['r'][point_idx] = rgbi[0]
+            current_full_pc['g'][point_idx] = rgbi[1]
+            current_full_pc['b'][point_idx] = rgbi[2]
+            current_full_pc['class'][point_idx] = final_ci
         
-        result_pc = ros_numpy.point_cloud2.array_to_pointcloud2(ros_numpy.point_cloud2.merge_rgb_fields(res_pc_array), frame_id="map", stamp=current_ts)
+        result_pc = ros_numpy.point_cloud2.array_to_pointcloud2(ros_numpy.point_cloud2.merge_rgb_fields(current_full_pc), frame_id="map", stamp=current_ts)
         pc_publisher.publish(result_pc)
 
 def pil2msg(im):
@@ -383,6 +389,28 @@ def on_pc_received(msg: FilteredPointCloud):
     start = time.time()
     process()
     print(f"Processing time {time.time() - start}")
+
+
+def on_full_pc_received(msg: PointCloud2):
+    global current_full_pc, current_full_pc_ts
+    if current_full_pc_ts is None:
+        current_full_pc_ts = msg.header.stamp
+    if msg.header.stamp < current_full_pc_ts:
+        print("Detected jump back in time")
+        current_full_pc = None
+    current_full_pc_ts = msg.header.stamp
+    if current_full_pc is None:
+        current_full_pc = convert_pc_msg_to_single_np(msg)
+    else:
+        tmp_full_pc = convert_pc_msg_to_single_np(msg)
+        print("LENGTH", len(tmp_full_pc))
+        for k in ['x', 'y', 'z']:
+            current_full_pc[k] = tmp_full_pc[k][:len(current_full_pc)]
+        tmp_rest = tmp_full_pc[len(current_full_pc):]
+        result_class = np.zeros(tmp_rest.shape[0], dtype=[('class', 'i1')]) 
+        tmp_rest = rfn.merge_arrays((tmp_rest, result_class), flatten=True)
+        current_full_pc = rfn.stack_arrays([current_full_pc, tmp_rest])
+        print("NEW LENGTH", len(current_full_pc))
 
 
 def on_camera_info_received(msg: CameraInfo):
@@ -433,6 +461,7 @@ if __name__ == "__main__":
     rospy.Subscriber("/camera/rgb/camera_info",
                      CameraInfo, on_camera_info_received)
     rospy.Subscriber("/camera/rgb/image_color", Image, on_img_received)
+    rospy.Subscriber("/rtabmap/cloud_map", PointCloud2, on_full_pc_received)
     tf_listener = tf.TransformListener()
     publisher = rospy.Publisher(
         '/projection/image', sensor_msgs.msg.Image, queue_size=5)
